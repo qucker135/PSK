@@ -3,5 +3,7 @@ Projekt z kluczowania fazy (PSK) wykonany na przedmiot Niezawodność i Diagnost
 
 Skład grupy:
 Mateusz Marciniec
+
 Michał Maziec
+
 Bartosz Matysiak
