@@ -25,18 +25,31 @@ carrier = np.cos(2.0 * pi * f * t)  # nośna
 bpsk_sig = np.cos(2.0 * pi * f * t + (pi * bit_samples))
 bpsk_sig_noised = bpsk_sig + noise * noise_level
 
-fig, ax = plt.subplots() #wykresy
-ax.plot(t, bit_samples)
-plt.show()
+# wykresy
+fig, axs = plt.subplots(2, 2)
+axs[0, 0].plot(t, bit_samples)
+axs[0, 0].set_xlabel('Czas')
+axs[0, 0].set_ylabel('Amplituda')
+axs[0, 0].set_title('Pierwotny sygnał')
+axs[0, 0].grid(True)
 
-fig2, ax2 = plt.subplots()
-ax2.plot(t, carrier)
-plt.show()
+axs[0, 1].plot(t, carrier)
+axs[0, 1].set_xlabel('Czas')
+axs[0, 1].set_ylabel('Amplituda')
+axs[0, 1].set_title('Nośna')
+axs[0, 1].grid(True)
 
-fig3, ax3 = plt.subplots()
-ax3.plot(t, bpsk_sig)
-plt.show()
+axs[1, 0].plot(t, bpsk_sig)
+axs[1, 0].set_xlabel('Czas')
+axs[1, 0].set_ylabel('Amplituda')
+axs[1, 0].set_title('Sygnał')
+axs[1, 0].grid(True)
 
-fig4, ax4 = plt.subplots()
-ax4.plot(t, bpsk_sig_noised)
+axs[1, 1].plot(t, bpsk_sig_noised)
+axs[1, 1].set_xlabel('Czas')
+axs[1, 1].set_ylabel('Amplituda')
+axs[1, 1].set_title('Sygnał z szumem')
+axs[1, 1].grid(True)
+
+fig.tight_layout()  # czytelne rozłożenie wykresów
 plt.show()
