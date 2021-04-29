@@ -2,26 +2,39 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal
 from math import pi
 import numpy as np
+import cv2
 
 t_symbol = 1.0  # czas trwania pojedyńczego symbolu
 fs = 100  # częstotliwość próbkowania
 f = 6.0  # częstotliwość nośnej
-np.random.seed(19680801)  # ziarno losowości
-noise_level = 1  # poziom szumu, przy poziomie 8 się psuje
+# np.random.seed(19680801)  # ziarno losowości
+noise_level = 2  # poziom szumu, przy poziomie 8 się psuje
+black = [0, 0, 0]
+white = [255, 255, 255]
 
-bit_array = np.array([1, 0, 0, 1, 0])  # przykładowa tablica "bitów" do przesłania
+img = cv2.imread('10px_b_w_img.png')
+shape = img.shape
+height = shape[0]
+width = shape[1]
+
+bit_array = np.zeros((height, width))
+
+for i in range(height):
+    for j in range(width):
+        px = img[i, j]
+        if px[0] == 255 and px[1] == 255 and px[2] == 255:
+            bit_array[i, j] = 1
 
 size = bit_array.size
 
 t = np.arange(0.0, t_symbol * size, 1 / fs)  # dziedzina czasu
 
+noise = np.random.randn(len(t))  # generowanie szumu białego
 bit_samples = np.repeat(bit_array, fs)  # powielamy każdy bit, by wytworzyć tablice próbek
 
 carrier = np.cos(2.0 * pi * f * t)  # nośna
 
 bpsk_sig = np.cos(2.0 * pi * f * t + (pi * bit_samples))
-
-noise = np.random.randn(len(t))  # generowanie szumu białego
 bpsk_sig_noised = bpsk_sig + noise * noise_level
 
 # Konstrukcja filtra środkowoprzepustowego, częstotliwości graniczne [f / 2, 1.5 * f]
@@ -115,7 +128,7 @@ axs[0, 2].grid(True)
 axs[1, 2].plot(t, bandpass_demodulated)
 axs[1, 2].set_xlabel('Czas [s]')
 axs[1, 2].set_ylabel('Amplituda')
-axs[1, 2].set_title('Sygnał z szumem po demodulacji nośna')
+axs[1, 2].set_title('Sygnał z szumem po demodulacji nośną')
 axs[1, 2].grid(True)
 
 axs[2, 2].plot(t, bpsk_sig_lowpass)
@@ -124,6 +137,47 @@ axs[2, 2].set_ylabel('Amplituda')
 axs[2, 2].set_title('Sygnał z szumem po filtrze dolnoprzepustowym')
 axs[2, 2].grid(True)
 
-
 fig.tight_layout()  # czytelne rozłożenie wykresów
+
+# Przetworzenie listy z bitami na obraz
+# --------------- działający kod ----------------------------------------
+detection_bpsk_reshaped = np.reshape(bit_array_received, (height, width))
+
+img_end = np.zeros([height, width, 3])
+
+for i in range(height):
+    for j in range(width):
+        if detection_bpsk_reshaped[i, j] == 1:
+            img_end[i, j] = white
+# -----------------------------------------------------------------------
+
+# --------------- zabawny kod zależny od printa i str -------------------
+# nie działa jeśli print i str są zakomentowane
+# zadziała po odkomentowaniu jednego z nich
+#
+# detection_bpsk_reshaped = np.reshape(bit_array_received, (height, width))
+#
+# # print(detection_bpsk_reshaped)
+# # str(detection_bpsk_reshaped)
+#
+# img_end = np.empty([height, width])
+#
+# for i in range(height):
+#     for j in range(width):
+#         if detection_bpsk_reshaped[i, j] == 1:
+#             np.append(img_end, white)
+# -----------------------------------------------------------------------
+
+# wyświetlenie obrazów
+cv2.namedWindow('Sygnal orginalny', cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Sygnal orginalny', 800, 400)
+cv2.imshow('Sygnal orginalny', img)
+
+cv2.namedWindow('Sygnal odebrany', cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Sygnal odebrany', 800, 400)
+cv2.imshow('Sygnal odebrany', img_end)
+
 plt.show()
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
