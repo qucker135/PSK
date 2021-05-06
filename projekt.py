@@ -5,26 +5,31 @@ import numpy as np
 import cv2
 
 t_symbol = 1.0  # czas trwania pojedyńczego symbolu
-fs = 100  # częstotliwość próbkowania
+fs = 40  # częstotliwość próbkowania
 f = 6.0  # częstotliwość nośnej
 # np.random.seed(19680801)  # ziarno losowości
 noise_level = 2  # poziom szumu, przy poziomie 8 się psuje
-black = [0, 0, 0]
-white = [255, 255, 255]
+img_scale = 4 # wielkość wyświetlanych obrazów (liczba px * img_scale)
 
-img = cv2.imread('10px_b_w_img.png')
+# wczytanie obrazu i rozmiarów, działa do około 100 x 100 px
+img = cv2.imread('Images/pwr_75.jpg')
 shape = img.shape
 height = shape[0]
 width = shape[1]
 
-bit_array = np.zeros((height, width))
+img_reshaped = np.reshape(img, (1, height * width * 3))[0] # spłaszczenie listy
 
-for i in range(height):
-    for j in range(width):
-        px = img[i, j]
-        if px[0] == 255 and px[1] == 255 and px[2] == 255:
-            bit_array[i, j] = 1
+img_bit_array = [
+    np.fromiter(                  # ponieważ map zwraca iterator
+        map(
+            int,                  # zamieniamy każdy znak reprezentacji binarnej na int
+            bin(b)[2:].zfill(8),  # pomijamy 0b na początku, i wypełniamy 0 tak aby było 8 cyfr
+        ),
+        int
+    ) for b in img_reshaped # dla każdego bajtu w img_reshaped
+]
 
+bit_array = np.reshape(img_bit_array, (1, height * width * 3 * 8))[0] # spłaszczenie listy
 size = bit_array.size
 
 t = np.arange(0.0, t_symbol * size, 1 / fs)  # dziedzina czasu
@@ -50,11 +55,11 @@ bpsk_sig_noised = bpsk_sig + noise * noise_level
 # b - licznik, a - mianownik - wielomiany filtra IIR
 # Filtr rzędu N ma N+1 współczynników b w liczniku
 # i N współczynników a w mianowniku.
-[b11, a11] = signal.ellip(5, 0.5, 60, [f / 2 * 2 / fs, f * 1.5 * 2 / fs], btype='bandpass', analog=False, output='ba')
+[b11, a11] = signal.ellip(5, 0.7, 110, [f / 2 * 2 / fs, f * 1.5 * 2 / fs], btype='bandpass', analog=False, output='ba')
 
 # Konstrukcja filtra dolnoprzepustowego, częstotliwość odcięcia pasma przepustowego wynosi f / 2
 
-[b12, a12] = signal.ellip(5, 0.5, 60, (f / 2 * 2 / fs), btype='lowpass', analog=False, output='ba')
+[b12, a12] = signal.ellip(5, 0.7, 110, (f / 2 * 2 / fs), btype='lowpass', analog=False, output='ba')
 
 # Filtruj szum poza pasmem za pomocą filtra środkowoprzepustowego
 
@@ -70,7 +75,7 @@ bpsk_sig_lowpass = signal.filtfilt(b12, a12, bandpass_demodulated)
 
 # Sprawdzenie próbek
 
-bit_array_received = np.zeros(size)
+bit_array_received = np.zeros(size, dtype = int)
 
 for i in range(size):
     temp = 0
@@ -85,6 +90,8 @@ for i in range(size):
 
 bit_samples_received = np.repeat(bit_array_received, fs)  # powielamy każdy bit, by wytworzyć tablice próbek
 
+# dla większych obrazów rysowanie wykresów wykorzystuje zbyt dużo pamięci
+'''
 # wykresy
 fig, axs = plt.subplots(3, 3)
 axs[0, 0].plot(t, bit_samples)
@@ -138,46 +145,28 @@ axs[2, 2].set_title('Sygnał z szumem po filtrze dolnoprzepustowym')
 axs[2, 2].grid(True)
 
 fig.tight_layout()  # czytelne rozłożenie wykresów
+'''
 
-# Przetworzenie listy z bitami na obraz
-# --------------- działający kod ----------------------------------------
-detection_bpsk_reshaped = np.reshape(bit_array_received, (height, width))
+img_end = [
+    int(                                            # zamieniamy ciąg znaków na bajt
+        ''.join(                                    # łączymy w jeden ciąg znaków
+            map(str, bit_array_received[i:i+8])     # zamieniamy każdy bit na znak
+        ),
+        2                                           # baza systemu liczbowego
+    ) for i in range(0, len(bit_array_received), 8) # dzielimy na fragmenty po 8 bitów
+]
 
-img_end = np.zeros([height, width, 3])
-
-for i in range(height):
-    for j in range(width):
-        if detection_bpsk_reshaped[i, j] == 1:
-            img_end[i, j] = white
-# -----------------------------------------------------------------------
-
-# --------------- zabawny kod zależny od printa i str -------------------
-# nie działa jeśli print i str są zakomentowane
-# zadziała po odkomentowaniu jednego z nich
-#
-# detection_bpsk_reshaped = np.reshape(bit_array_received, (height, width))
-#
-# # print(detection_bpsk_reshaped)
-# # str(detection_bpsk_reshaped)
-#
-# img_end = np.empty([height, width])
-#
-# for i in range(height):
-#     for j in range(width):
-#         if detection_bpsk_reshaped[i, j] == 1:
-#             np.append(img_end, white)
-# -----------------------------------------------------------------------
+img_end_reshaped = np.uint8(np.reshape(img_end, (height, width, 3))) # nadanie odpowiednych wymiarów i typu
 
 # wyświetlenie obrazów
-cv2.namedWindow('Sygnal orginalny', cv2.WINDOW_NORMAL)
-cv2.resizeWindow('Sygnal orginalny', 800, 400)
-cv2.imshow('Sygnal orginalny', img)
+cv2.namedWindow('Obraz orginalny', cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Obraz orginalny', width * img_scale, height * img_scale)
+cv2.imshow('Obraz orginalny', img)
 
-cv2.namedWindow('Sygnal odebrany', cv2.WINDOW_NORMAL)
-cv2.resizeWindow('Sygnal odebrany', 800, 400)
-cv2.imshow('Sygnal odebrany', img_end)
+cv2.namedWindow('Obraz odebrany', cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Obraz odebrany', width * img_scale, height * img_scale)
+cv2.imshow('Obraz odebrany', img_end_reshaped)
 
-plt.show()
-
+# plt.show()
 cv2.waitKey(0)
 cv2.destroyAllWindows()
