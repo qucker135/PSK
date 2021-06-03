@@ -1,5 +1,5 @@
 import numpy as np
-from math import pi, sqrt, asin
+from math import pi, sqrt, asin, sin, acos, cos
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 import cv2
@@ -8,11 +8,12 @@ import cv2
 t_Symbol = 1.0 #czas trwania pojedynczego symbolu
 fs = 100       #czestotliwosc probkowania
 f = 6.0        #czestotliwosc nosnej
-noise_level = 2.0
+noise_level = 1.0
 img_scale = 4 # wielkość wyświetlanych obrazów (liczba px * img_scale)
 
 # wczytanie obrazu i rozmiarów, działa do około 100 x 100 px
-img = cv2.imread('Images/pwr_75.jpg')
+img = cv2.imread('Images/iz_110.jpg')
+#img = cv2.imread('Images/pwr_120.jpg')
 #img = cv2.imread('Images/10px_b_w_img.png')
 shape = img.shape
 height = shape[0]
@@ -61,10 +62,10 @@ signal_modulated = np.cos(2*pi*f*t + pi/2*symbol_array_qpsk_samples + asin(1.0/s
 noise = np.random.randn(len(t))
 signal_modulated_with_noise = signal_modulated + noise * noise_level
 
-#TODO
-#constellation diagram
+
+#Listy niezbędne do diagramu konstelacji 
 #diagram_degrees = symbol_array_qpsk*360.0/4.0
-diagram_radians = pi/2.0*symbol_array_qpsk
+diagram_radians = pi/2.0*symbol_array_qpsk_samples + asin(1.0/sqrt(10.0))
 diagram_symbols = np.cos(diagram_radians) + 1j * np.sin(diagram_radians)
 
 #debug
@@ -144,7 +145,40 @@ for i in range(size):
 
 print(symbol_array_received)
 
-symbol_samples_received = np.repeat(symbol_array_received, fs)  # powielamy każdy bit, by wytworzyć tablice próbek
+#listy do diagramu konstelacyjnego
+#qpsk_sig_lowpass - juz zdefiniowane
+#w zasadzie nw po co
+symbol_samples_received = np.repeat(symbol_array_received, t_Symbol*fs)  # powielamy każdy symbol, by wytworzyć tablice próbek
+
+
+qpsk_sig_lowpass_2nd_coor = np.zeros(qpsk_sig_lowpass.size)
+
+for i in range(qpsk_sig_lowpass.size):
+	if qpsk_sig_lowpass[i] > 2.0/sqrt(10.0) or ( qpsk_sig_lowpass[i] < 0.0 and qpsk_sig_lowpass[i] > -2.0/sqrt(10.0)):
+		qpsk_sig_lowpass_2nd_coor[i] = sin(acos(min(qpsk_sig_lowpass[i], 1.0)))
+	else:
+		qpsk_sig_lowpass_2nd_coor[i] = -1.0 * sin(acos(max(qpsk_sig_lowpass[i], -1.0)))
+
+
+diagram_samples_received = np.zeros(qpsk_sig_lowpass.size, dtype=complex)
+for i in range(qpsk_sig_lowpass.size):
+	diagram_samples_received[i] = max(min(1.0,qpsk_sig_lowpass[i]),-1.0) + 1j * qpsk_sig_lowpass_2nd_coor[i]
+
+#comment
+#diagram_samples_received = max(min(1.0,qpsk_sig_lowpass),-1.0) + 1j * qpsk_sig_lowpass_2nd_coor
+
+
+
+'''
+diagram_samples_received = np.zeros(size, dtype=complex)
+for i in range(size):
+	if symbol_samples_received[i]==0 or symbol_samples_received[i]==1:
+		diagram_samples_received[i] = qpsk_sig_lowpass[i] + 1j * sqrt(1.0 - qpsk_sig_lowpass[i]**2)
+	if symbol_samples_received[i]==2 or symbol_samples_received[i]==3:
+		diagram_samples_received[i] = qpsk_sig_lowpass[i] - 1j * sqrt(1.0 - qpsk_sig_lowpass[i]**2)
+
+'''
+		
 
 #przetworzenie kodu czwórkowego na bity
 bit_array_received = np.array([], dtype=int)
@@ -157,7 +191,7 @@ print(type(bit_array_received))
 
 
 #test
-fig, axs = plt.subplots(2, 2)
+fig, axs = plt.subplots(2, 3)
 axs[0,0].plot(t, signal_modulated)
 axs[0,0].set_xlabel("Czas [t]")
 axs[0,0].set_ylabel("Amplituda")
@@ -176,27 +210,32 @@ axs[1,0].set_ylabel("Amplituda")
 axs[1,0].set_title("QPSK z szumem")
 axs[1,0].grid(True)
 
-
-'''
-axs[1,1].plot(np.real(diagram_symbols), np.imag(diagram_symbols), '.')
-axs[1,1].set_xlabel("Czas [t]")
-axs[1,1].set_ylabel("Amplituda")
-axs[1,1].set_title("Constellation diagram")
-axs[1,1].grid(True)
-'''
-
-
-
 axs[1,1].plot(t, qpsk_sig_lowpass)
 axs[1,1].set_xlabel("Czas [t]")
 axs[1,1].set_ylabel("Amplituda")
 axs[1,1].set_title("qpsk_sig_lowpass")
 axs[1,1].grid(True)
 
+axs[0,2].plot(np.real(diagram_symbols), np.imag(diagram_symbols), '.')
+axs[0,2].set_xlabel("Real")
+axs[0,2].set_ylabel("Imag")
+axs[0,2].set_title("Diagram konstelacyjny (sygnał wysłany)")
+axs[0,2].grid(True)
+
+
+axs[1,2].plot(np.real(diagram_samples_received), np.imag(diagram_samples_received), '.')
+axs[1,2].set_xlabel("Real")
+axs[1,2].set_ylabel("Imag")
+axs[1,2].set_title("Diagram konstelacyjny (sygnał odebrany)")
+axs[1,2].grid(True)
+
+
 
 
 fig.tight_layout()
 
+#debug
+#plt.show()
 
 img_end = [
     int(                                            # zamieniamy ciąg znaków na bajt
@@ -222,5 +261,4 @@ cv2.imshow('Obraz odebrany', img_end_reshaped)
 plt.show()
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-
 
