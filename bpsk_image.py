@@ -94,22 +94,22 @@ for i in range(size): #petla po kazdym otrzymanym bicie
 bit_samples_received = np.repeat(bit_array_received, fs)  # powielamy każdy bit, by wytworzyć tablice próbek
 
 
-fig2, axs2 = plt.subplots(1,2)
+fig, axs = plt.subplots(1,2)
 
-axs2[0].plot(np.real(diagram_bits), np.imag(diagram_bits), '.')
-axs2[0].set_xlabel('Real')
-axs2[0].set_ylabel('Imag')
-axs2[0].set_title('Diagram konstelacyjny (sygnał wysłany)')
-axs2[0].grid(True)
+axs[0].plot(np.real(diagram_bits), np.imag(diagram_bits), '.')
+axs[0].set_xlabel('Real')
+axs[0].set_ylabel('Imag')
+axs[0].set_title('Diagram konstelacyjny (sygnał wysłany)')
+axs[0].grid(True)
 
 
-axs2[1].plot(bpsk_sig_lowpass, np.zeros(bpsk_sig_lowpass.size), '.')
-axs2[1].set_xlabel('Real')
-axs2[1].set_ylabel('Imag')
-axs2[1].set_title('Diagram konstelacyjny (sygnał odebrany)')
-axs2[1].grid(True)
+axs[1].plot(bpsk_sig_lowpass, np.zeros(bpsk_sig_lowpass.size), '.')
+axs[1].set_xlabel('Real')
+axs[1].set_ylabel('Imag')
+axs[1].set_title('Diagram konstelacyjny (sygnał odebrany)')
+axs[1].grid(True)
 
-fig2.tight_layout()
+fig.tight_layout()
 
 img_end = [
     int(                                            # zamieniamy ciąg znaków na bajt
